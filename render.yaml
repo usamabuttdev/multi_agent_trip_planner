@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: trip-orchestrator
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: FRONTEND_ORIGIN
+        value: "*"
+      - key: OPENROUTER_MODEL
+        value: openrouter/free
+      - key: OPENROUTER_BASE_URL
+        value: https://openrouter.ai/api/v1
+      - key: DATABASE_URL
+        value: sqlite:///./trips.db
+      - key: OPENROUTER_API_KEY
+        sync: false
