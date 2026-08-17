@@ -1,7 +1,7 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import Markdown from 'react-markdown'
-import { fetchHealth, fetchMetrics, fetchTrip, fetchTrips, planTripStream } from './api'
-import { backendUrl } from './config'
+import { fetchHealth, fetchMetrics, fetchTrip, fetchTrips, planTripJson, planTripStream } from './api'
+import { backendUrl, useAgentStream } from './config'
 import type { AgentEvent, Metrics, TripResponse, TripSummary } from './types'
 
 const EXAMPLES = [
@@ -82,9 +82,11 @@ export default function App() {
     setResult(null)
     setActivity([])
     try {
-      const trip = await planTripStream(query, (event) => {
-        setActivity((current) => [...current.filter((item) => item.agent !== event.agent), event])
-      })
+      const trip = useAgentStream
+        ? await planTripStream(query, (event) => {
+            setActivity((current) => [...current.filter((item) => item.agent !== event.agent), event])
+          })
+        : await planTripJson(query)
       setResult(trip)
       await refreshSidebar()
     } catch (err) {

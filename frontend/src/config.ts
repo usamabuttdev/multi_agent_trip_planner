@@ -14,3 +14,6 @@ function readBackendUrl(): string {
 }
 
 export const backendUrl = readBackendUrl()
+
+/** SSE is for local uvicorn. Vercel serverless often kills long streams. */
+export const useAgentStream = !backendUrl || /localhost|127\.0\.0\.1/.test(backendUrl)

@@ -66,7 +66,9 @@ Vercel injects these as `os.environ`. [backend/app/config.py](backend/app/config
 | --- | --- | --- |
 | `VITE_API_URL` | yes on Vercel | Public FastAPI URL, **no trailing slash**, e.g. `https://your-api.vercel.app` |
 
-Local: `cp frontend/.env.example frontend/.env` and set `VITE_API_URL` to your deployed API (or leave empty for the :8000 proxy). Restart `npm run dev` after changing it. On Vercel, set the same name in the **frontend** project, then Redeploy — Vite inlines it at build time ([frontend/src/config.ts](frontend/src/config.ts)).
+Local: `cp frontend/.env.example frontend/.env` and set `VITE_API_URL` to your deployed API (or leave empty for the :8000 proxy). Restart `npm run dev` after changing it. On Vercel, set the same name in the **frontend** project, then Redeploy — Vite inlines it at build time ([frontend/src/config.ts](frontend/src/config.ts)). Hosted UI uses `POST /api/trips` (JSON), not SSE, because a Vercel function cannot hold a long stream.
+
+FastAPI project **Root Directory** must be `backend`. After adding env vars, redeploy that project. If Functions still crash, check Logs; Hobby max duration is 300s (a full graph can take 1–4 minutes).
 
 CORS: FastAPI allows `https://*.vercel.app` plus localhost. If the browser still says **Redirect is not allowed for a preflight request**, turn off **Deployment Protection** on the *API* project (Settings → Deployment Protection → Standard Protection off, or bypass for `*.vercel.app`). Preview URLs (`*-git-main-*`) often 302 to the Vercel login page on `OPTIONS`, which CORS cannot follow.
 

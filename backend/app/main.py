@@ -22,7 +22,11 @@ from app.services.runner import iter_trip_events, run_trip, state_to_response
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    init_db()
+    try:
+        init_db()
+    except Exception:
+        # Do not crash the Vercel function if /tmp sqlite is unavailable.
+        pass
     yield
 
 
@@ -95,6 +99,14 @@ async def create_trip(body: TripCreateRequest, session: Session = Depends(get_se
         return TripResponse.model_validate(payload)
     message = payload.get("message") or "Orchestration failed"
     raise HTTPException(status_code=502, detail=message)
+
+
+@app.get("/api/trips/stream")
+def stream_get_hint() -> dict[str, str]:
+    return {
+        "ok": False,
+        "detail": "POST this path for SSE, or POST /api/trips for a JSON result. A browser GET cannot run a trip.",
+    }
 
 
 @app.post("/api/trips/stream")
