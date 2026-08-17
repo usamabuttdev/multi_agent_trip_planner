@@ -6,14 +6,17 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request as HttpRequest
+from fastapi.exceptions import RequestValidationError
+from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session, joinedload
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import get_settings
-from app.db import SessionLocal, get_session, init_db
+from app.db import SessionLocal, db_ping, get_session, init_db
 from app.models.contracts import TripCreateRequest, TripDetail, TripResponse, TripSummary
 from app.models.tables import AgentRun, Request
 from app.services.audit import create_request
@@ -25,7 +28,7 @@ async def lifespan(_app: FastAPI):
     try:
         init_db()
     except Exception:
-        # Do not crash the Vercel function if /tmp sqlite is unavailable.
+        # Schema is also created lazily in get_session() for Vercel cold starts.
         pass
     yield
 
@@ -58,6 +61,18 @@ app.add_middleware(
 )
 
 
+@app.exception_handler(Exception)
+async def unhandled_error(request: HttpRequest, exc: Exception) -> JSONResponse:
+    if isinstance(exc, RequestValidationError):
+        return await request_validation_exception_handler(request, exc)
+    if isinstance(exc, StarletteHTTPException):
+        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc), "type": type(exc).__name__},
+    )
+
+
 def _require_llm_key() -> None:
     if not settings.openrouter_api_key:
         raise HTTPException(
@@ -80,12 +95,25 @@ def _agents_from_row(row: Request) -> list[str]:
         return []
 
 
+def _safe_database_url(url: str) -> str:
+    if "://" not in url:
+        return url
+    scheme, rest = url.split("://", 1)
+    if "@" in rest:
+        return f"{scheme}://***@{rest.rsplit('@', 1)[-1]}"
+    return url
+
+
 @app.get("/api/health")
 def health() -> dict[str, Any]:
+    db_error = db_ping()
     return {
-        "ok": True,
+        "ok": db_error is None,
         "model": settings.openrouter_model,
         "llm_configured": bool(settings.openrouter_api_key),
+        "database_ok": db_error is None,
+        "database_error": db_error,
+        "database_url": _safe_database_url(settings.database_url),
     }
 
 

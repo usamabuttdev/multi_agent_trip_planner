@@ -3,7 +3,7 @@ from pathlib import Path
 import os
 
 from dotenv import load_dotenv
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -57,6 +57,17 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             return value.strip().strip('"').strip("'")
         return value
+
+    @model_validator(mode="after")
+    def vercel_writable_sqlite(self) -> "Settings":
+        # Vercel Lambda FS is read-only except /tmp. A dashboard DATABASE_URL
+        # copied from .env.example (sqlite:///./trips.db) 500s every request.
+        if not os.getenv("VERCEL"):
+            return self
+        url = self.database_url
+        if url.startswith("sqlite") and ":memory:" not in url and "/tmp/" not in url:
+            self.database_url = "sqlite:////tmp/trips.db"
+        return self
 
 
 @lru_cache

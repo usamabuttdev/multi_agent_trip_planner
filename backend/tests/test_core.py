@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import os
 import unittest
+from unittest.mock import patch
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -131,6 +133,20 @@ class AuditTests(unittest.TestCase):
         self.assertEqual(runs[0].agent_name, "destination")
         self.assertEqual(runs[0].status, "ok")
         session.close()
+
+
+class VercelConfigTests(unittest.TestCase):
+    def test_relative_sqlite_is_rewritten_to_tmp(self) -> None:
+        from app.config import Settings
+
+        env = {
+            "VERCEL": "1",
+            "DATABASE_URL": "sqlite:///./trips.db",
+            "OPENROUTER_API_KEY": "",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            settings = Settings(_env_file=None)
+        self.assertEqual(settings.database_url, "sqlite:////tmp/trips.db")
 
 
 class JsonExtractTests(unittest.TestCase):
