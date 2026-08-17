@@ -41,3 +41,30 @@ Try: *Five day trip somewhere warm in Europe for under 1500 pounds* (full chain)
 ```bash
 cd backend && PYTHONPATH=. .venv/bin/python -m unittest tests.test_core
 ```
+
+## Environment variables (local and Vercel)
+
+Pydantic Settings reads **process env first**. A local `.env` is only for development. On Vercel you never commit keys — you paste them in the dashboard. Vite bakes `VITE_*` in at **build** time, so change those and Redeploy.
+
+### FastAPI project (Vercel)
+
+Project → Settings → Environment Variables, Production + Preview:
+
+| Name | Required | Notes |
+| --- | --- | --- |
+| `OPENROUTER_API_KEY` | yes | Same key as local `.env` |
+| `OPENROUTER_MODEL` | no | Default `openrouter/free` |
+| `OPENROUTER_BASE_URL` | no | Default `https://openrouter.ai/api/v1` |
+| `FRONTEND_ORIGIN` | recommended | Frontend origin, e.g. `https://your-ui.vercel.app` (or `*` for a demo) |
+| `DATABASE_URL` | no | On Vercel, SQLite defaults to `/tmp/trips.db` (ephemeral). Use Postgres later if you want a lasting audit log. |
+
+Vercel injects these as `os.environ`. [backend/app/config.py](backend/app/config.py) picks them up automatically (`VERCEL=1` is set by the platform).
+
+### Frontend project (Vercel)
+
+| Name | Required | Notes |
+| --- | --- | --- |
+| `VITE_API_URL` | yes on Vercel | Public FastAPI URL, **no trailing slash**, e.g. `https://your-api.vercel.app` |
+
+Local: `cp frontend/.env.example frontend/.env` and set `VITE_API_URL` to your deployed API (or leave empty for the :8000 proxy). Restart `npm run dev` after changing it. On Vercel, set the same name in the **frontend** project, then Redeploy — Vite inlines it at build time ([frontend/src/config.ts](frontend/src/config.ts)).
+

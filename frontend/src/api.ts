@@ -1,6 +1,7 @@
 import type { AgentEvent, Metrics, TripResponse, TripSummary } from './types'
+import { backendUrl } from './config'
 
-const API_BASE = import.meta.env.VITE_API_URL ?? ''
+const API_BASE = backendUrl
 
 async function parseError(response: Response): Promise<string> {
   try {

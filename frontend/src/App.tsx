@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import Markdown from 'react-markdown'
 import { fetchHealth, fetchMetrics, fetchTrip, fetchTrips, planTripStream } from './api'
+import { backendUrl } from './config'
 import type { AgentEvent, Metrics, TripResponse, TripSummary } from './types'
 
 const EXAMPLES = [
@@ -101,6 +102,9 @@ export default function App() {
         <p className="lede">
           Destination, Itinerary, and Budget are separate specialists. A planner routes the request
           and a synthesizer writes one answer. {operator ? 'Operator audit view.' : 'Traveller view.'}
+        </p>
+        <p className="muted">
+          API: {backendUrl || 'local Vite proxy → http://127.0.0.1:8000'}
         </p>
         {llmReady === false && (
           <p className="banner">Backend is up, but OPENROUTER_API_KEY is missing.</p>
