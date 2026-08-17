@@ -27,16 +27,30 @@ async def lifespan(_app: FastAPI):
 
 
 settings = get_settings()
-app = FastAPI(title="Trip Orchestrator", version="0.1.0", lifespan=lifespan)
+app = FastAPI(
+    title="Trip Orchestrator",
+    version="0.1.0",
+    lifespan=lifespan,
+    # OPTIONS preflight must not 307; Vercel + FastAPI slash redirects fail CORS.
+    redirect_slashes=False,
+)
 
 _raw_origins = [origin.strip() for origin in settings.frontend_origin.split(",") if origin.strip()]
 _wildcard = _raw_origins == ["*"]
+_explicit = [] if _wildcard else _raw_origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"] if _wildcard else (_raw_origins or ["http://localhost:5173"]),
-    allow_credentials=not _wildcard,
-    allow_methods=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        *_explicit,
+    ],
+    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=86400,
 )
 
 
@@ -101,7 +115,11 @@ async def stream_trip(body: TripCreateRequest) -> StreamingResponse:
     return StreamingResponse(
         events(),
         media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Access-Control-Allow-Origin": "*",
+        },
     )
 
 
